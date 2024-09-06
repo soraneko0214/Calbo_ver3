@@ -1,0 +1,51 @@
+Designator,Val,Package,Mid X,Mid Y,Rotation,Layer
+C1,220μ50V,CP_Radial_D8.0mm_P3.50mm,31.37,61.74,0.0,top
+C2,0.1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,40.8225,59.2,180.0,top
+C3,1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,37.4675,47.77,0.0,top
+C4,1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,31.906,52.4425,90.0,top
+C5,0.1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,5.49,40.5575,90.0,top
+C6,0.1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,60.1,61.105,-90.0,top
+C7,0.1μ 25V,C_0603_1608Metric_Pad1.08x0.95mm_HandSolder,16.5125,10.94,180.0,top
+CN1,~,CONN-SMD_HY2.0-4P,63.325,27.035,90.0,top
+CN2,~,CONN-SMD_HY2.0-4P,63.415,39.735,90.0,top
+D1,LED_GREEN,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,62.4,13.48,180.0,top
+D2,LED_RED,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,33.43,9.43,-90.0,top
+D3,LED_RED,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,30.89,9.43,-90.0,top
+D4,LED_RED,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,28.35,9.43,-90.0,top
+D5,LED_BLUE,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,55.655,63.885,-90.0,top
+D6,LED_RED,LED_0603_1608Metric_Pad1.05x0.95mm_HandSolder,25.81,9.43,-90.0,top
+D7,RB168MM-40,D_SOD-123F,36.1,66.82,180.0,top
+D8,MMSZ4690T1G,D_SOD-123,30.556,55.39,180.0,top
+F1,Fuse_Small,Fuseholder_Littelfuse_100_series_5x20mm,15.461,50.31,0.0,top
+J1,Barrel_Jack_Switch,BarrelJack_Horizontal,11.015,58.615,-90.0,top
+J2,Conn_01x02,JST_XH_S2B-XH-A_1x02_P2.50mm_Horizontal,22.361,59.2,180.0,top
+J3,st7735,JST_XH_B8B-XH-A_1x08_P2.50mm_Vertical,47.3,10.83,0.0,top
+J4,st7735,JST_XH_B8B-XH-A_1x08_P2.50mm_Vertical,47.3,17.925,0.0,top
+J5,Conn_01x03,JST_XH_B3B-XH-A_1x03_P2.50mm_Vertical,4.22,17.885,90.0,top
+J6,Conn_01x02,JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical,39.8,3.955,0.0,top
+J7,Conn_01x02,JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical,49.96,55.39,0.0,top
+J8,Conn_01x03,JST_EH_S3B-EH_1x03_P2.50mm_Horizontal,48.71,61.74,0.0,top
+J9,Conn_01x05,JST_XH_B5B-XH-A_1x05_P2.50mm_Vertical,17.0,4.59,180.0,top
+Q1,2SA1162GR,SC-59_Handsoldering,65.18,49.295,90.0,top
+Q2,DTD123Y,SC-59_Handsoldering,67.085,15.13,-90.0,top
+R1,10k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,62.64,19.195,90.0,top
+R10,2.2k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,60.1,57.7375,-90.0,top
+R11,470,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,33.43,5.5825,90.0,top
+R12,470,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,30.89,5.5825,90.0,top
+R14,470,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,28.35,5.5825,90.0,top
+R15,1k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,55.655,60.1125,90.0,top
+R16,470,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,25.81,5.5825,90.0,top
+R17,10,R_0805_2012Metric_Pad1.20x1.40mm_HandSolder,41.685,65.82,-90.0,top
+R2,10k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,64.545,19.195,90.0,top
+R3,2.2M,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,40.7725,61.74,0.0,top
+R4,7.5k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,67.72,49.9525,-90.0,top
+R5,10k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,26.7225,40.15,0.0,top
+R6,20k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,61.7275,50.945,0.0,top
+R7,330,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,61.525,10.6625,90.0,top
+R8,10k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,62.9175,60.47,180.0,top
+R9,2.2k,R_0603_1608Metric_Pad0.98x0.95mm_HandSolder,62.005,57.7375,90.0,top
+U1,R-78C5.0-1.0,Converter_DCDC_RECOM_R-78E-0.5_THT,39.145,55.39,180.0,top
+U2,Pico,RPi_Pico_SMD_TH,27.08,35.0,90.0,top
+U3,AP7333-33SGA,SOT-23_Handsoldering,30.407,48.72,180.0,top
+U4,MAX3485,SOP-8_3.9x4.9mm_P1.27mm,65.815,56.025,90.0,top
+U5,ULN2003A,DIP-16_W7.62mm_Socket_LongPads,24.54,17.29,-90.0,top
