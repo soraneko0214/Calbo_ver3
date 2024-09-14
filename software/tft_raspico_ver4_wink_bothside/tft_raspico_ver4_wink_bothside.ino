@@ -11,9 +11,6 @@ unsigned short uh　符号なし16ビット整数
 long w 符号付32ビット整数
 unsigned long uw　符号なし32ビット整数
 
-【オリジナル接頭語】
-p ピン番号
-
 【定数接頭語】
 C 一般定数
 P ピン番号
@@ -43,13 +40,17 @@ BL<->NONE
 /***********************************************************************************************************************
 《1》取り込みファイル定義
 ***********************************************************************************************************************/
-#ifndef __eyeStorage_
-#include "eyeStorage.h"
+#ifndef __eyeAnimation_
+#include "eyeAnimation.h"
+#endif
+#ifndef __blinkAnimation_
+#include "blinkAnimation.h"
+#endif
+
 #include <SPI.h>
 #include <TFT_eSPI.h>
-#include <Servo.h>
 #include <Wire.h>
-#endif
+
 
 /***********************************************************************************************************************
 《2》ファイル内でのみ使用する定数定義
@@ -57,16 +58,19 @@ BL<->NONE
 /*ピン設定*/
 #define P_CS_EYE_LEFT (16)
 #define P_CS_EYE_RIGHT (13)
+
 #define P_DEBUG_LED (14)
 #define P_TOUCH_SENSOR (10)
 #define P_LIGHT_SENSOR (26)
-#define P_TAIL_SERVO (9)
+
+#define P_STEPPING1 (9)
+#define P_STEPPING2 (8)
+#define P_STEPPING3 (7)
+#define P_STEPPING4 (6)
 
 //共通定義
 const bool C_ENABLE = true;
 const bool C_DISABLE = false;
-const bool C_ON = true;
-const bool C_OFF = false;
 const bool C_LEFT_EYE = false;
 const bool C_RIGHT_EYE = true;
 const uint8_t C_BLINK_CLOSE = 1;
@@ -79,13 +83,6 @@ const uint8_t C_NORMAL_EYE = 0;         //標準目
 const uint8_t C_CLOSED_EYE = 1;         //閉じ目
 const uint32_t C_BLINK_TIME = 5000;     //瞬きの時間
 const uint8_t C_PUPIL_HEIGHT = 35;      //瞳孔高さ
-
-enum wag_speed
-{
-    NO_MOVEMENT,
-    NORMAL_SPEED,
-    VARIABLE_SPEED,
-};
 
 //extern const unsigned short uhLeftEye[];
 //extern const unsigned short uhRightEye[];
@@ -103,16 +100,16 @@ enum wag_speed
 ***********************************************************************************************************************/
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite sprEyeBase = TFT_eSprite(&tft);
+TFT_eSprite sprEyeBrow = TFT_eSprite(&tft);
 TFT_eSprite sprEyePupil = TFT_eSprite(&tft);
-Servo tailservo;
 
 /***********************************************************************************************************************
 《6》ファイル内で共有するstatic変数定義
 ***********************************************************************************************************************/
 static uint8_t _gubBlinkDir = C_BLINK_STOP;
+static bool _gbTailFlag = true;
 static int8_t _gbEyeX = 0;
 static int8_t _gbEyeY = 0;
-static bool _gblClosedEyeFlag = false;
 
 /***********************************************************************************************************************
 《7》ファイル内で共有するstatic関数プロトタイプ宣言
@@ -146,7 +143,9 @@ void setup(void)
     Wire.setSDA(0);
     Wire.setSCL(1);
     Wire.begin(0x01);
-    Wire.onRequest(requestEvent);  //I2C
+    Wire.onRequest(requestEvent);
+
+    //Serial.begin(9600);  //デバッグ用通信速度
 
     //ピン設定
     pinMode(P_CS_EYE_LEFT, OUTPUT);   //左ディスプレイのチップセレクトピン出力定義
@@ -154,16 +153,21 @@ void setup(void)
     pinMode(P_DEBUG_LED, OUTPUT);     //デバッグLEDのピンを出力設定
     pinMode(P_TOUCH_SENSOR, INPUT);   //静電容量センサのピンを入力設定
 
+
+    pinMode(P_STEPPING1, OUTPUT);
+    pinMode(P_STEPPING2, OUTPUT);
+    pinMode(P_STEPPING3, OUTPUT);
+    pinMode(P_STEPPING4, OUTPUT);
+
     _gubBlinkDir = C_BLINK_CLOSE;  //瞬きの変数フラグを立てる
 
-    //しっぽサーボモータ初期設定
-    tailservo.attach(P_TAIL_SERVO);
-    tailservo.write(60);
-    delay(100);
+    EyeInit();  //アイディスプレイの初期化
+    tft.fillScreen(TFT_WHITE);
+    tft.pushImage(0, 70, 128, 20, uhLogo);  //ロゴをアイディスプレイに表示
+    delay(1500);                            //プロモーションタイム
 
-    EyeInit();    //アイディスプレイの初期化
     LedFlash(2);  //デバッグLED点滅
-    LedDrive(C_ON);
+    EyeInit();
 }
 
 /*****************************************************************************************
@@ -177,9 +181,117 @@ void setup(void)
 void loop()
 {
     EyeDrive(_gbEyeX, _gbEyeY);
-    TailMovement();
+    if (_gubBlinkDir == C_BLINK_STOP && _gbTailFlag == true)
+    {
+        TailDrive();
+        _gbTailFlag = false;
+    }
+    GetTouchSensor();  //静電容量センサデバッグ用
 }
 
+/*****************************************************************************************
+  関数名 : TailDrive
+  説明  : しっぽ動作
+  引数  : None
+  返値  : None
+  作成日 : 2024/8/12
+  作成者 : S.Yamamoto
+*****************************************************************************************/
+void TailDrive()
+{
+    uint8_t ubRandom = random(0, 3);
+    SteppingMotorDrive(4096);
+    /*
+    if (ubRandom == 0)
+    {
+    }
+    else
+    {
+        //do nothing
+    }
+    */
+}
+
+/*****************************************************************************************
+  関数名 : SteppingMotorDrive
+  説明  : ステッピングモータ動作
+  引数  : uhStepCountEnd
+  返値  : None
+  作成日 : 2024/9/9
+  作成者 : S.Yamamoto
+*****************************************************************************************/
+void SteppingMotorDrive(uint16_t uhStepCountEnd)
+{
+    //4096 Step で360degree
+    uint16_t uhCount = 0;
+    for (uhCount = 0; uhCount < uhStepCountEnd; uhCount++)
+    {
+        //i を割った余りを評価。つまり(0, 1, 2, 3, 4, 5, 6, 7のいずれか)
+        switch (uhCount % 8)
+        {
+            case 0:
+                digitalWrite(P_STEPPING1, HIGH);
+                digitalWrite(P_STEPPING2, LOW);
+                digitalWrite(P_STEPPING3, LOW);
+                digitalWrite(P_STEPPING4, LOW);
+                break;
+
+            case 1:
+                digitalWrite(P_STEPPING1, HIGH);
+                digitalWrite(P_STEPPING2, HIGH);
+                digitalWrite(P_STEPPING3, LOW);
+                digitalWrite(P_STEPPING4, LOW);
+                break;
+
+            case 2:
+                digitalWrite(P_STEPPING1, LOW);
+                digitalWrite(P_STEPPING2, HIGH);
+                digitalWrite(P_STEPPING3, LOW);
+                digitalWrite(P_STEPPING4, LOW);
+                break;
+
+            case 3:
+                digitalWrite(P_STEPPING1, LOW);
+                digitalWrite(P_STEPPING2, HIGH);
+                digitalWrite(P_STEPPING3, HIGH);
+                digitalWrite(P_STEPPING4, LOW);
+                break;
+
+            case 4:
+                digitalWrite(P_STEPPING1, LOW);
+                digitalWrite(P_STEPPING2, LOW);
+                digitalWrite(P_STEPPING3, HIGH);
+                digitalWrite(P_STEPPING4, LOW);
+                break;
+
+            case 5:
+                digitalWrite(P_STEPPING1, LOW);
+                digitalWrite(P_STEPPING2, LOW);
+                digitalWrite(P_STEPPING3, HIGH);
+                digitalWrite(P_STEPPING4, HIGH);
+                break;
+
+            case 6:
+                digitalWrite(P_STEPPING1, LOW);
+                digitalWrite(P_STEPPING2, LOW);
+                digitalWrite(P_STEPPING3, LOW);
+                digitalWrite(P_STEPPING4, HIGH);
+                break;
+
+            case 7:
+                digitalWrite(P_STEPPING1, HIGH);
+                digitalWrite(P_STEPPING2, LOW);
+                digitalWrite(P_STEPPING3, LOW);
+                digitalWrite(P_STEPPING4, HIGH);
+                break;
+        }
+
+        delayMicroseconds(1000);  //Step ウエイト
+    }
+
+    //1週ごとのウエイト
+    delay(1000);
+}
 /*****************************************************************************************
   関数名 : requestEvent
   説明  : i2c送信タスク
@@ -190,10 +302,39 @@ void loop()
 *****************************************************************************************/
 void requestEvent()
 {
-    Wire.write(Tilt_Random());  //1~3
-    Wire.write(Pan_Random());   //1~3
-    _gbEyeY = Tilt_Random();
-    _gbEyeX = Pan_Random();
+    uint8_t ubPosY = Tilt_Random();
+    uint8_t ubPosX = Pan_Random();
+    Wire.write(ubPosY);  //0~199
+    Wire.write(ubPosX);  //0~199
+    _gbEyeY = ManualMap(ubPosY);
+    _gbEyeX = ManualMap(ubPosX);
+}
+
+/*****************************************************************************************
+  関数名 : ManualMap
+  説明  : 手動マップ
+  引数  : None
+  返値  : None
+  作成日 : 2024/8/11
+  作成者 : S.Yamamoto
+*****************************************************************************************/
+int8_t ManualMap(uint8_t ubPos)
+{
+    int8_t bPos = 0;
+    if (ubPos >= 0 && ubPos < 60)
+    {
+        bPos = -1;
+    }
+    else if (ubPos >= 60 && ubPos < 140)
+    {
+        bPos = 0;
+    }
+    else if (ubPos >= 140 && ubPos < 200)
+    {
+        bPos = 1;
+    }
+    //Serial.println(bPos);
+    return bPos;
 }
 
 /***********************************************************************************************************************
@@ -206,8 +347,8 @@ void requestEvent()
 ***********************************************************************************************************************/
 uint8_t Tilt_Random()
 {
-    uint8_t uhRandom = random(0, 3);
-    return uhRandom;
+    uint16_t ubRandom = random(0, 200);
+    return ubRandom;
 }
 
 /***********************************************************************************************************************
@@ -220,8 +361,8 @@ uint8_t Tilt_Random()
 ***********************************************************************************************************************/
 uint8_t Pan_Random()
 {
-    uint8_t uhRandom = random(0, 3);
-    return uhRandom;
+    uint8_t ubRandom = random(0, 200);
+    return ubRandom;
 }
 
 /*****************************************************************************************
@@ -285,12 +426,15 @@ void EyeDrive(int8_t bPosX, int8_t bPosY)
 {
     static uint8_t ubEyelidHeight = 0;  //まぶたの高さ
     static uint32_t uwOldTime = 0;      //瞬き時間
+    static uint8_t ubTailPosition = 0;
 
+    static uint16_t uhRandomNumber = 0;
+    uhRandomNumber = random(3000, 7000);
     //瞬き
     uint32_t uwNowTime = millis();      //現在時刻の保持
     if (_gubBlinkDir == C_BLINK_CLOSE)  //閉じる方向
     {
-        if (ubEyelidHeight < 100)
+        if (ubEyelidHeight < 120)
         {
             ubEyelidHeight += 20;
         }
@@ -313,8 +457,10 @@ void EyeDrive(int8_t bPosX, int8_t bPosY)
     if (_gubBlinkDir == 0 && (uwNowTime - uwOldTime) >= C_BLINK_TIME)  //瞬き間隔が経過したら
     {
         _gubBlinkDir = C_BLINK_CLOSE;
+        _gbTailFlag = true;
         uwOldTime = uwNowTime;
     }
+
 
     //右目表示
     LeftEyeStatus(C_DISABLE);
@@ -337,107 +483,151 @@ void EyeDrive(int8_t bPosX, int8_t bPosY)
 *****************************************************************************************/
 void NormalEyeDesign(bool blSide, int8_t bPosX, int8_t bPosY, uint8_t ubEyelidHeight)
 {
+    int8_t bHeartPupilPosX = 0;
+    int8_t bHeartPupilPosY = 0;
+
     sprEyeBase.createSprite(C_EYE_SIZE, C_EYE_SIZE);  //目のベーススプライト生成
     if (blSide == C_LEFT_EYE)                         //左目選択なら
     {
-        if (bPosY == 0)
+        if (bPosY == -1)
         {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X1);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X2);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X3);
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X1);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X2);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X3);
+        }
+        else if (bPosY == 0)
+        {
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X1);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X2);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X3);
         }
         else if (bPosY == 1)
         {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X1);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X2);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X3);
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X1);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X2);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X3);
         }
-        else if (bPosY == 2)
-        {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X1);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X2);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X3);
-        }
+        bHeartPupilPosX = bHeartPupilPosX + bPosX * 5 - 5;
     }
     else  //右目選択なら
     {
-        if (bPosY == 0)
+        if (bPosY == -1)
         {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X3);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X4);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X5);
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X3);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X4);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY2X5);
+        }
+        else if (bPosY == 0)
+        {
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X3);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X4);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X5);
         }
         else if (bPosY == 1)
         {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X3);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X4);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY3X5);
+            if (bPosX == -1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X3);
+            else if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X4);
+            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X5);
         }
-        else if (bPosY == 2)
-        {
-            if (bPosX == 0) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X3);
-            else if (bPosX == 1) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X4);
-            else if (bPosX == 2) sprEyeBase.pushImage(0, 0, 100, 100, uhEyeY4X5);
-        }
+        bHeartPupilPosX = bHeartPupilPosX + bPosX * 5 + 5;
+    }
+    bHeartPupilPosY = bHeartPupilPosY + -1 * bPosY * 5;
+    if (GetTouchSensor())  //眉間をなでられたら
+    {
+        sprEyePupil.createSprite(30, 25);  //目のベーススプライト生成
+        sprEyePupil.pushImage(0, 0, 30, 25, uhHeart);
+        sprEyePupil.pushToSprite(&sprEyeBase, 50 - 15 + bHeartPupilPosX, 50 - 12 + bHeartPupilPosY, TFT_BLACK);
     }
 
-    sprEyeBase.fillRect(0, 0, C_EYE_SIZE, ubEyelidHeight, TFT_BLACK);                            //まぶた表示
+    BlinkAnimation(ubEyelidHeight, blSide);
+
     sprEyeBase.pushSprite(tft.width() / 2 - C_EYE_SIZE / 2, tft.height() / 2 - C_EYE_SIZE / 2);  //スプライト出力(不動)
 
+    sprEyeBrow.deleteSprite();
     sprEyeBase.deleteSprite();
 }
 
 /*****************************************************************************************
-  関数名 : TailMovement
-  説明  : しっぽの動作
-  引数  : None
+  関数名 : BlinkAnimation
+  説明  : まばたき
+  引数  : ubEyelidHeight, blSide
   返値  : None
-  作成日 : 2024/8/1
+  作成日 : 2024/8/11
   作成者 : S.Yamamoto
 *****************************************************************************************/
-void TailMovement()
+void BlinkAnimation(uint8_t ubEyelidHeight, bool blSide)
 {
-    uint8_t ubTailPosition = 0;
-    uint16_t uhRandom = random(0, 3);  //０：動かない、１：動く、２：
-    //しっぽ動作連動
-    if (uhRandom == 0)
+    uint8_t ubBlinkScene = ubEyelidHeight / 20;
+    sprEyeBrow.createSprite(C_EYE_SIZE, C_EYE_SIZE);  //目のベーススプライト生成
+    if (ubBlinkScene == 0)
     {
         //do nothing
     }
-    else if (uhRandom == 1)  //通常揺動
+    else if (ubBlinkScene == 1)
     {
-        for (uint8_t ubPos = 30; ubPos <= 150; ubPos += 10)
-        {
-            tailservo.write(ubPos);
-            delay(5);
-        }
-        for (uint8_t ubPos = 150; ubPos >= 30; ubPos -= 10)
-        {
-            tailservo.write(ubPos);
-            delay(5);
-        }
+        if (blSide == C_LEFT_EYE) sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkLeft1);
+        else sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkRight1);
     }
-
-    else if (uhRandom == 1)  //通常揺動
+    else if (ubBlinkScene == 2)
     {
-        for (uint8_t ubPos = 30; ubPos <= 150; ubPos += 10)
-        {
-            tailservo.write(ubPos);
-            delay(5);
-        }
-        for (uint8_t ubPos = 150; ubPos >= 30; ubPos -= 10)
-        {
-            tailservo.write(ubPos);
-            delay(2);
-        }
+        if (blSide == C_LEFT_EYE) sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkLeft2);
+        else sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkRight2);
     }
+    else if (ubBlinkScene == 3)
+    {
+        if (blSide == C_LEFT_EYE) sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkLeft3);
+        else sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkRight3);
+    }
+    else if (ubBlinkScene == 4)
+    {
+        if (blSide == C_LEFT_EYE) sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkLeft4);
+        else sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkRight4);
+    }
+    else if (ubBlinkScene == 5)
+    {
+        if (blSide == C_LEFT_EYE) sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkLeft5);
+        else sprEyeBrow.pushImage(0, 0, 100, 100, uhBlinkRight5);
+    }
+    else
+    {
+        sprEyeBrow.fillRect(0, 0, 100, 100, TFT_BLACK);
+    }
+    if (ubBlinkScene != 0)
+    {
+        sprEyeBrow.pushToSprite(&sprEyeBase, 0, 0, TFT_WHITE);
+    }
+    //Serial.println(ubBlinkScene);
 }
+
+/*****************************************************************************************
+  関数名 : GetTouchSensor
+  説明  : 静電容量センサの数値取得
+  引数  : None
+  返値  : value
+  作成日 : 2024/8/10
+  作成者 : S.Yamamoto
+*****************************************************************************************/
+bool GetTouchSensor()
+{
+    bool blSensorOutput = false;
+    if (digitalRead(P_TOUCH_SENSOR) == true)
+    {
+        blSensorOutput = true;
+        LedDrive(true);
+    }
+    else
+    {
+        LedDrive(false);
+    }
+    return blSensorOutput;
+}
+
 
 /*****************************************************************************************
   関数名 : GetLightValue
   説明  : 照度センサの数値取得
   引数  : None
-  返値  : value
+  返値  : ubSensorOutput
   作成日 : 2024/5/10
   作成者 : S.Yamamoto
 *****************************************************************************************/
